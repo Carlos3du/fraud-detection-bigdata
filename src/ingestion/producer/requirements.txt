@@ -1,0 +1,4 @@
+kafka-python==2.0.2
+python-decouple==3.8
+pandas==3.0.2
+uv==0.9.30
