@@ -5,8 +5,17 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "kafka-python>=2.3.0",
     "kagglehub[pandas-datasets]>=1.0.0",
     "matplotlib>=3.10.8",
     "pandas>=3.0.2",
+    "poethepoet>=0.35.0",
+    "python-decouple>=3.8",
     "seaborn>=0.13.2",
 ]
+
+[tool.poe.tasks]
+build = "docker compose up --build -d"
+up = "docker compose up -d"
+down = "docker compose down"
+logs = "docker compose logs -f"

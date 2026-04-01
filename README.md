@@ -46,6 +46,13 @@ Este projeto usa [uv](https://docs.astral.sh/uv/) para gerenciar as dependência
     uv sync
     ```
 
+4. Para executar a pipeline, use o comando:
+
+    ```bash
+    uv run poe up
+    uv run poe down # para parar os serviços
+    ```
+
 ## Requisitos do projeto
 
 - [ ] Diagrama do pipeline de dados atual (ingestão, armazenamento e transformação)
@@ -57,7 +64,7 @@ Este projeto usa [uv](https://docs.astral.sh/uv/) para gerenciar as dependência
 
 - Ingestão:
   - [ ] Em progresso
-  - [ ] Finalizado
+  - [x] Finalizado
   - [ ] Pendente
 - Armazenamento:
   - [ ] Em progresso
