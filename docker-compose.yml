@@ -60,7 +60,6 @@ services:
     environment:
       KAFKA_BROKER: broker:29092
       KAFKA_TOPIC: creditcard
-
   minio:
     image: minio/minio:latest
     ports:
