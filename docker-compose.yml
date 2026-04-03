@@ -60,3 +60,4 @@ services:
     environment:
       KAFKA_BROKER: broker:29092
       KAFKA_TOPIC: creditcard
+      KAFKA_OUTPUT_TOPIC: creditcard-transformed
