@@ -88,3 +88,4 @@ services:
 
 volumes:
   minio_data:
+      KAFKA_OUTPUT_TOPIC: creditcard-transformed
