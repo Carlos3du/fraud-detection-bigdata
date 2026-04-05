@@ -46,7 +46,20 @@ Este projeto usa [uv](https://docs.astral.sh/uv/) para gerenciar as dependência
     uv sync
     ```
 
-4. Para executar a pipeline, use o comando:
+4. Configure as variáveis de ambiente copiando o arquivo de exemplo:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Edite o `.env` definindo as credenciais do MinIO:
+
+    ```env
+    MINIO_ROOT_USER=seu_usuario
+    MINIO_ROOT_PASSWORD=sua_senha
+    ```
+
+5. Para executar a pipeline, use o comando:
 
     ```bash
     uv run poe up
