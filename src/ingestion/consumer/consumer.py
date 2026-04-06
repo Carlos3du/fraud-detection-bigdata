@@ -182,66 +182,20 @@ def categorize_amount(amount: float) -> str:
         return "alto"
     return "muito_alto"
 
-
-def create_hour_bucket(time_in_seconds: float) -> str:
-    hour = int(time_in_seconds // 3600) % 24
-    return f"{hour:02d}:00-{hour:02d}:59"
-
-
-def transform_record(record: dict) -> pd.DataFrame | None:
-    df = pd.DataFrame([record])
-
-    missing_columns = [column for column in EXPECTED_COLUMNS if column not in df.columns]
-    if missing_columns:
-        print(f"Skipping record with missing columns: {missing_columns}")
+    if current_window is None or not current_window_rows:
         return None
 
-    df = df[EXPECTED_COLUMNS].dropna()
-    if df.empty:
-        print("Skipping record with null values.")
-        return None
+    window_df = pd.concat(current_window_rows, ignore_index=True)
+    object_key = upload_parquet_to_minio(window_df, current_window)
+    current_window_rows = []
+    return object_key
 
-    for column in NUMERIC_COLUMNS + ["Class"]:
-        df[column] = pd.to_numeric(df[column], errors="coerce")
 
-    df = df.dropna()
-    if df.empty:
-        print("Skipping record with invalid numeric values.")
-        return None
-
-    df["Time"] = df["Time"].astype(float)
-    df["Amount"] = df["Amount"].astype(float)
-    for column in [f"V{i}" for i in range(1, 29)]:
-        df[column] = df[column].astype(float)
-    df["Class"] = df["Class"].astype(int)
-
-    has_invalid_range = (
-        (df["Time"] < 0).any()
-        or (df["Amount"] < 0).any()
-        or (~df["Class"].isin([0, 1])).any()
-    )
-    if has_invalid_range:
-        print("Skipping record with values outside valid ranges.")
-        return None
-
-    amount_values = df[["Amount"]]
-    amount_scaler.partial_fit(amount_values)
-
-    df["transaction_amount_scaled"] = amount_scaler.transform(amount_values)
-    df["transaction_amount_log"] = df["Amount"].apply(math.log1p)
-    df["transaction_hour_bucket"] = df["Time"].apply(create_hour_bucket)
-    df["transaction_amount_category"] = df["Amount"].apply(categorize_amount)
-    df["is_fraud"] = df["Class"].map({1: "fraud", 0: "normal"})
-
-    df = df.rename(
-        columns={
-            "Time": "transaction_time",
-            "Amount": "transaction_amount",
-            "Class": "class",
-        }
-    )
-
-    return df[OUTPUT_COLUMNS]
+@atexit.register
+def flush_on_shutdown() -> None:
+    object_key = flush_current_window()
+    if object_key is not None:
+        print(f"Final 24-second parquet flushed on shutdown: {object_key}")
 
 
 for message in consumer:
