@@ -1,14 +1,21 @@
 import json
 import math
+from io import BytesIO
+from pathlib import Path
 
+import boto3
 import pandas as pd
 from decouple import config as env
-from kafka import KafkaConsumer, KafkaProducer
+from kafka import KafkaConsumer
 from sklearn.preprocessing import StandardScaler
 
 KAFKA_BROKER = env("KAFKA_BROKER", default="localhost:9092")
 KAFKA_TOPIC = env("KAFKA_TOPIC", default="creditcard")
-KAFKA_OUTPUT_TOPIC = env("KAFKA_OUTPUT_TOPIC", default="creditcard-transformed")
+MINIO_ENDPOINT = env("MINIO_ENDPOINT", default="http://minio:9000")
+MINIO_ACCESS_KEY = env("MINIO_ACCESS_KEY", default="minioadmin")
+MINIO_SECRET_KEY = env("MINIO_SECRET_KEY", default="minioadmin")
+MINIO_BUCKET = env("MINIO_BUCKET", default="silver")
+LOCAL_OUTPUT_DIR = Path("dados/transformed")
 
 EXPECTED_COLUMNS = ["Time", "Amount", "Class"] + [f"V{i}" for i in range(1, 29)]
 NUMERIC_COLUMNS = ["Time", "Amount"] + [f"V{i}" for i in range(1, 29)]
@@ -32,10 +39,17 @@ consumer = KafkaConsumer(
     bootstrap_servers=KAFKA_BROKER,
     value_deserializer=lambda x: json.loads(x.decode("utf-8")),
 )
-producer = KafkaProducer(
-    bootstrap_servers=KAFKA_BROKER,
-    value_serializer=lambda value: json.dumps(value).encode("utf-8"),
+s3_client = boto3.client(
+    "s3",
+    endpoint_url=MINIO_ENDPOINT,
+    aws_access_key_id=MINIO_ACCESS_KEY,
+    aws_secret_access_key=MINIO_SECRET_KEY,
 )
+
+if MINIO_BUCKET not in [bucket["Name"] for bucket in s3_client.list_buckets().get("Buckets", [])]:
+    s3_client.create_bucket(Bucket=MINIO_BUCKET)
+
+LOCAL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def categorize_amount(amount: float) -> str:
@@ -109,21 +123,42 @@ def transform_record(record: dict) -> pd.DataFrame | None:
     return df[OUTPUT_COLUMNS]
 
 
+def upload_parquet_to_minio(df: pd.DataFrame, partition: int, offset: int) -> str:
+    buffer = BytesIO()
+    object_key = f"transformed/partition={partition}/offset={offset}.parquet"
+    local_file = LOCAL_OUTPUT_DIR / f"partition={partition}_offset={offset}.parquet"
+
+    df.to_parquet(local_file, engine="pyarrow", index=False)
+    df.to_parquet(buffer, engine="pyarrow", index=False)
+    buffer.seek(0)
+
+    s3_client.put_object(
+        Bucket=MINIO_BUCKET,
+        Key=object_key,
+        Body=buffer.getvalue(),
+        ContentType="application/octet-stream",
+    )
+    return object_key
+
+
 for message in consumer:
     transformed_df = transform_record(message.value)
     if transformed_df is None:
         continue
 
-    transformed_record = transformed_df.iloc[0].to_dict()
-    producer.send(KAFKA_OUTPUT_TOPIC, transformed_record)
-    producer.flush()
+    object_key = upload_parquet_to_minio(
+        transformed_df,
+        partition=message.partition,
+        offset=message.offset,
+    )
 
     print(
         json.dumps(
             {
                 "input_topic": KAFKA_TOPIC,
-                "output_topic": KAFKA_OUTPUT_TOPIC,
-                "record": transformed_record,
+                "minio_bucket": MINIO_BUCKET,
+                "minio_object": object_key,
+                "record": transformed_df.iloc[0].to_dict(),
             },
             ensure_ascii=False,
         )
