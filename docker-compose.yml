@@ -57,8 +57,6 @@ services:
     depends_on:
       broker:
         condition: service_healthy
-      minio:
-        condition: service_healthy
     environment:
       KAFKA_BROKER: broker:29092
       KAFKA_TOPIC: creditcard
@@ -66,8 +64,6 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET: silver
-    volumes:
-      - ./dados:/app/dados
   minio:
     image: minio/minio:latest
     ports:
