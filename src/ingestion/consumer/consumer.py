@@ -64,17 +64,6 @@ except Exception as exc:
     traceback.print_exc()
     raise
 
-
-def categorize_amount(amount: float) -> str:
-    if amount < 10:
-        return "baixo"
-    if amount < 100:
-        return "medio"
-    if amount < 500:
-        return "alto"
-    return "muito_alto"
-
-
 def create_hour_bucket(time_in_seconds: float) -> str:
     hour = int(time_in_seconds // 3600) % 24
     return f"{hour:02d}:00-{hour:02d}:59"
@@ -164,14 +153,6 @@ def flush_current_window() -> str | None:
     object_key = upload_parquet_to_minio(window_df, current_window)
     current_window_rows = []
     return object_key
-
-
-@atexit.register
-def flush_on_shutdown() -> None:
-    object_key = flush_current_window()
-    if object_key is not None:
-        print(f"Final 24-second parquet flushed on shutdown: {object_key}")
-
 
 def categorize_amount(amount: float) -> str:
     if amount < 10:
