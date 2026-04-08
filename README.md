@@ -12,6 +12,7 @@ Projeto de BigData para detecção de transações fraudulentas em cartão de cr
 |![Gabriel](https://github.com/Gabriel-Chaves0.png?size=40)|Gabriel Chaves|[Gabriel-Chaves0](https://github.com/Gabriel-Chaves0)|[gco@cesar.school](mailto:gco@cesar.school)|
 |![Lucas](https://github.com/LucasGdBS.png?size=40)|Lucas Gabriel|[LucasGdBS](https://github.com/LucasGdBS)|[lgbs@cesar.school](mailto:lgbs@cesar.school)|
 |![Maria](https://github.com/FernandaFBMarques.png?size=40)|Maria Fernanda Marques|[FernandaFBMarques](https://github.com/FernandaFBMarques)|[mffbm@cesar.school](mailto:mffbm@cesar.school)|
+|![Thiago](https://github.com/tharaujo17.png?size=40)|Thiago Henrique|[tharaujo17](https://github.com/tharaujo17)|[thas@cesar.school](mailto:thas@cesar.school)|
 
 ## Fonte dos dados
 
