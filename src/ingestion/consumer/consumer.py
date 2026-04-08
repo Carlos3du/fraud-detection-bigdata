@@ -182,15 +182,6 @@ def categorize_amount(amount: float) -> str:
         return "alto"
     return "muito_alto"
 
-    if current_window is None or not current_window_rows:
-        return None
-
-    window_df = pd.concat(current_window_rows, ignore_index=True)
-    object_key = upload_parquet_to_minio(window_df, current_window)
-    current_window_rows = []
-    return object_key
-
-
 @atexit.register
 def flush_on_shutdown() -> None:
     object_key = flush_current_window()
