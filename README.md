@@ -22,7 +22,24 @@ A primeira análise dos dados pode ser encontrada no notebook [Data Analysis](sr
 
 ## Ferramentas utilizadas
 
--=-=-=- In Progress -=-=-=-
+### Ingestão de dados
+- Apache Kafka
+- kafka-python
+- Kaggle
+- Kaggle CLI
+
+### Processamento e transformação
+- Python
+- Pandas
+- scikit-learn
+
+### Armazenamento
+- MinIO
+- Parquet
+
+### Orquestração e ambiente
+- Docker
+- Docker Compose
 
 ## Setup
 
@@ -82,9 +99,9 @@ Este projeto usa [uv](https://docs.astral.sh/uv/) para gerenciar as dependência
   - [ ] Pendente
 - Armazenamento:
   - [ ] Em progresso
-  - [ ] Finalizado
+  - [x] Finalizado
   - [ ] Pendente
 - Transformação:
   - [ ] Em progresso
-  - [ ] Finalizado
+  - [x] Finalizado
   - [ ] Pendente
