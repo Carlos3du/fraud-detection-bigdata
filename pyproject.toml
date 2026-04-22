@@ -6,15 +6,21 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "boto3>=1.40.55",
+    "catboost>=1.2.10",
+    "jupyter>=1.1.1",
     "kafka-python>=2.3.0",
     "kagglehub[pandas-datasets]>=1.0.0",
+    "lightgbm>=4.6.0",
     "matplotlib>=3.10.8",
+    "numpy>=2.4.4",
     "pandas>=3.0.2",
+    "plotly>=6.7.0",
     "poethepoet>=0.35.0",
     "pyarrow>=21.0.0",
     "python-decouple>=3.8",
     "scikit-learn>=1.7.1",
     "seaborn>=0.13.2",
+    "xgboost>=3.2.0",
 ]
 
 [tool.poe.tasks]
