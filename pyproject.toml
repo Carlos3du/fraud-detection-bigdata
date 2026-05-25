@@ -7,6 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
     "boto3>=1.40.55",
     "catboost>=1.2.10",
+    "imblearn>=0.0",
     "jupyter>=1.1.1",
     "kafka-python>=2.3.0",
     "kagglehub[pandas-datasets]>=1.0.0",
