@@ -19,6 +19,12 @@ MINIO_BUCKET = env("MINIO_BUCKET", default="silver")
 
 EXPECTED_COLUMNS = ["Time", "Amount", "Class"] + [f"V{i}" for i in range(1, 29)]
 NUMERIC_COLUMNS = ["Time", "Amount"] + [f"V{i}" for i in range(1, 29)]
+AMOUNT_CATEGORY_DUMMY_COLUMNS = [
+    "dummy_amount_cat_baixo",
+    "dummy_amount_cat_medio",
+    "dummy_amount_cat_alto",
+    "dummy_amount_cat_muito_alto",
+]
 OUTPUT_COLUMNS = (
     [
         "is_fraud",
@@ -29,6 +35,7 @@ OUTPUT_COLUMNS = (
         "transaction_amount_log",
         "transaction_amount_category",
     ]
+    + AMOUNT_CATEGORY_DUMMY_COLUMNS
     + [f"V{i}" for i in range(1, 29)]
     + ["class"]
 )
@@ -112,6 +119,9 @@ def transform_record(record: dict) -> pd.DataFrame | None:
     df["transaction_amount_log"] = df["Amount"].apply(math.log1p)
     df["transaction_hour_bucket"] = df["Time"].apply(create_hour_bucket)
     df["transaction_amount_category"] = df["Amount"].apply(categorize_amount)
+    for column in AMOUNT_CATEGORY_DUMMY_COLUMNS:
+        category = column.removeprefix("dummy_amount_cat_")
+        df[column] = (df["transaction_amount_category"] == category).astype(int)
     df["is_fraud"] = df["Class"].map({1: "fraud", 0: "normal"})
 
     df = df.rename(
