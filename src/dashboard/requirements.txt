@@ -1,0 +1,6 @@
+boto3
+pandas
+plotly
+pyarrow
+python-decouple
+streamlit
