@@ -115,6 +115,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       GOLD_BUCKET: gold
       REFRESH_INTERVAL: "10"
+      DASHBOARD_MAX_FILES: "5000"
 
 volumes:
   minio_data:
