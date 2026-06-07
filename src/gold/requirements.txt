@@ -1,0 +1,9 @@
+boto3
+joblib
+numpy
+pandas
+pyarrow
+python-decouple
+scikit-learn
+xgboost
+imbalanced-learn
