@@ -13,7 +13,7 @@ MINIO_ACCESS_KEY = env("MINIO_ACCESS_KEY", default="minioadmin")
 MINIO_SECRET_KEY = env("MINIO_SECRET_KEY", default="minioadmin")
 SILVER_BUCKET = env("SILVER_BUCKET", default="silver")
 GOLD_BUCKET = env("GOLD_BUCKET", default="gold")
-MODEL_PATH = env("MODEL_PATH", default="/app/dados/model_fraud.pkl")
+MODEL_PATH = env("MODEL_PATH", default="/app/models/xgb_model.pkl")
 POLL_INTERVAL = int(env("POLL_INTERVAL", default="10"))
 
 FEATURE_COLUMNS = (
