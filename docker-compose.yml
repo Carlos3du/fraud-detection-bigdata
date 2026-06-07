@@ -50,6 +50,7 @@ services:
       KAFKA_TOPIC: creditcard
     volumes:
       - ./src/scripts:/app/src/scripts:ro
+      - ./dados:/app/dados:ro
   
   consumer:
     build: ./src/ingestion/consumer
@@ -98,6 +99,7 @@ services:
       POLL_INTERVAL: "10"
     volumes:
       - ./dados:/app/dados:ro
+      - ./models:/app/models:ro
 
   dashboard:
     build: ./src/dashboard
