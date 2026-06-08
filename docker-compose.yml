@@ -50,6 +50,7 @@ services:
       KAFKA_TOPIC: creditcard
     volumes:
       - ./src/scripts:/app/src/scripts:ro
+      - ./dados:/app/dados:ro
   
   consumer:
     build: ./src/ingestion/consumer
@@ -98,6 +99,7 @@ services:
       POLL_INTERVAL: "10"
     volumes:
       - ./dados:/app/dados:ro
+      - ./models:/app/models:ro
 
   dashboard:
     build: ./src/dashboard
@@ -113,6 +115,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       GOLD_BUCKET: gold
       REFRESH_INTERVAL: "10"
+      DASHBOARD_MAX_FILES: "5000"
 
 volumes:
   minio_data:

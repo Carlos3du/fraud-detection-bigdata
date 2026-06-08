@@ -1,7 +1,7 @@
-import time
 from io import BytesIO
 
 import boto3
+from botocore.exceptions import ClientError
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -12,6 +12,7 @@ MINIO_ACCESS_KEY = env("MINIO_ACCESS_KEY", default="minioadmin")
 MINIO_SECRET_KEY = env("MINIO_SECRET_KEY", default="minioadmin")
 GOLD_BUCKET = env("GOLD_BUCKET", default="gold")
 REFRESH_INTERVAL = int(env("REFRESH_INTERVAL", default="10"))
+DASHBOARD_MAX_FILES = int(env("DASHBOARD_MAX_FILES", default="5000"))
 
 st.set_page_config(
     page_title="Detecção de Fraudes",
@@ -30,17 +31,33 @@ def get_s3_client():
     )
 
 
-def load_gold_data(s3) -> pd.DataFrame | None:
+@st.cache_data(ttl=REFRESH_INTERVAL)
+def load_gold_data() -> pd.DataFrame | None:
     try:
-        response = s3.list_objects_v2(Bucket=GOLD_BUCKET, Prefix="predictions/")
-        keys = [obj["Key"] for obj in response.get("Contents", [])]
+        s3 = get_s3_client()
+        keys = []
+        paginator = s3.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=GOLD_BUCKET, Prefix="predictions/"):
+            keys.extend(obj["Key"] for obj in page.get("Contents", []))
+            if len(keys) >= DASHBOARD_MAX_FILES:
+                keys = keys[:DASHBOARD_MAX_FILES]
+                break
+
         if not keys:
             return None
+
         frames = []
         for key in keys:
             obj = s3.get_object(Bucket=GOLD_BUCKET, Key=key)
             frames.append(pd.read_parquet(BytesIO(obj["Body"].read())))
+
         return pd.concat(frames, ignore_index=True)
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code")
+        if error_code == "NoSuchBucket":
+            return None
+        st.error(f"Erro ao carregar dados: {e}")
+        return None
     except Exception as e:
         st.error(f"Erro ao carregar dados: {e}")
         return None
@@ -85,7 +102,12 @@ def render_dashboard(df: pd.DataFrame) -> None:
             color_discrete_sequence=["#6366f1"],
             labels={"fraud_probability": "Probabilidade", "count": "Transações"},
         )
-        fig_hist.add_vline(x=0.5, line_dash="dash", line_color="red", annotation_text="Threshold 0.5")
+        fig_hist.add_vline(
+            x=0.5,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="Threshold 0.5",
+        )
         st.plotly_chart(fig_hist, use_container_width=True)
 
     st.subheader("Fraudes por categoria de valor")
@@ -119,15 +141,17 @@ def render_dashboard(df: pd.DataFrame) -> None:
         "is_fraud",
     ]
     recent = df[display_cols].tail(50).sort_values("transaction_time", ascending=False)
-    recent = recent.rename(columns={
-        "transaction_time": "Tempo",
-        "transaction_amount": "Valor (R$)",
-        "transaction_amount_category": "Categoria",
-        "fraud_probability": "Prob. Fraude",
-        "risk_level": "Risco",
-        "is_fraud_pred": "Pred. Fraude",
-        "is_fraud": "Label Real",
-    })
+    recent = recent.rename(
+        columns={
+            "transaction_time": "Tempo",
+            "transaction_amount": "Valor (R$)",
+            "transaction_amount_category": "Categoria",
+            "fraud_probability": "Prob. Fraude",
+            "risk_level": "Risco",
+            "is_fraud_pred": "Pred. Fraude",
+            "is_fraud": "Label Real",
+        }
+    )
 
     def highlight_fraud(row):
         if row["Pred. Fraude"] == 1:
@@ -143,22 +167,16 @@ def render_dashboard(df: pd.DataFrame) -> None:
 
 def main() -> None:
     st.title("🔍 Detecção de Fraudes em Tempo Real")
-    st.caption(f"Atualização automática a cada {REFRESH_INTERVAL}s")
+    st.caption(f"Dados em cache por {REFRESH_INTERVAL}s")
 
-    placeholder = st.empty()
-    s3 = get_s3_client()
+    with st.spinner(f"Carregando até {DASHBOARD_MAX_FILES:,} transações..."):
+        df = load_gold_data()
+    if df is None or df.empty:
+        st.info("Aguardando dados da camada gold... Verifique se a pipeline está rodando.")
+    else:
+        render_dashboard(df)
 
-    while True:
-        with placeholder.container():
-            df = load_gold_data(s3)
-            if df is None or df.empty:
-                st.info("Aguardando dados da camada gold... Verifique se a pipeline está rodando.")
-            else:
-                render_dashboard(df)
-            st.caption(f"Última atualização: {pd.Timestamp.now().strftime('%H:%M:%S')}")
-
-        time.sleep(REFRESH_INTERVAL)
-        st.rerun()
+    st.caption(f"Última atualização: {pd.Timestamp.now().strftime('%H:%M:%S')}")
 
 
 if __name__ == "__main__":

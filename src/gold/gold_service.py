@@ -4,7 +4,6 @@ from io import BytesIO
 
 import boto3
 import joblib
-import numpy as np
 import pandas as pd
 from decouple import config as env
 
@@ -16,11 +15,27 @@ GOLD_BUCKET = env("GOLD_BUCKET", default="gold")
 MODEL_PATH = env("MODEL_PATH", default="/app/models/xgb_model.pkl")
 POLL_INTERVAL = int(env("POLL_INTERVAL", default="10"))
 
-FEATURE_COLUMNS = (
-    ["Time"]
+DEFAULT_FEATURE_COLUMNS = (
+    [
+        "transaction_time",
+    ]
     + [f"V{i}" for i in range(1, 29)]
-    + ["Amount", "Hour", "log_amount", "hour", "diff_from_mean", "v4_v14_inter"]
+    + [
+        "transaction_amount",
+        "transaction_amount_scaled",
+        "transaction_amount_log",
+        "dummy_amount_cat_alto",
+        "dummy_amount_cat_baixo",
+        "dummy_amount_cat_medio",
+        "dummy_amount_cat_muito_alto",
+    ]
 )
+AMOUNT_CATEGORY_DUMMY_COLUMNS = [
+    "dummy_amount_cat_baixo",
+    "dummy_amount_cat_medio",
+    "dummy_amount_cat_alto",
+    "dummy_amount_cat_muito_alto",
+]
 
 s3 = boto3.client(
     "s3",
@@ -38,13 +53,19 @@ def ensure_bucket(bucket: str) -> None:
 
 
 def list_silver_keys() -> list[str]:
-    response = s3.list_objects_v2(Bucket=SILVER_BUCKET, Prefix="transformed/")
-    return [obj["Key"] for obj in response.get("Contents", [])]
+    keys = []
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=SILVER_BUCKET, Prefix="transformed/"):
+        keys.extend(obj["Key"] for obj in page.get("Contents", []))
+    return keys
 
 
 def list_gold_keys() -> set[str]:
-    response = s3.list_objects_v2(Bucket=GOLD_BUCKET, Prefix="predictions/")
-    return {obj["Key"] for obj in response.get("Contents", [])}
+    keys = set()
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=GOLD_BUCKET, Prefix="predictions/"):
+        keys.update(obj["Key"] for obj in page.get("Contents", []))
+    return keys
 
 
 def read_parquet(bucket: str, key: str) -> pd.DataFrame:
@@ -52,18 +73,32 @@ def read_parquet(bucket: str, key: str) -> pd.DataFrame:
     return pd.read_parquet(BytesIO(obj["Body"].read()))
 
 
-def build_features(df: pd.DataFrame, mean_amount: float) -> pd.DataFrame:
-    feat = pd.DataFrame()
-    feat["Time"] = df["transaction_time"]
-    for v in [f"V{i}" for i in range(1, 29)]:
-        feat[v] = df[v]
-    feat["Amount"] = df["transaction_amount"]
-    feat["Hour"] = np.floor(feat["Time"] / 3600)
-    feat["log_amount"] = np.log1p(feat["Amount"])
-    feat["hour"] = (feat["Time"] // 3600) % 24
-    feat["diff_from_mean"] = feat["Amount"] - mean_amount
-    feat["v4_v14_inter"] = feat["V4"] * feat["V14"]
-    return feat[FEATURE_COLUMNS]
+def get_model_and_features(artifact) -> tuple[object, list[str]]:
+    if isinstance(artifact, dict):
+        model = artifact["model"]
+    else:
+        model = artifact
+
+    feature_names = getattr(model, "feature_names_in_", None)
+    if feature_names is None:
+        feature_names = DEFAULT_FEATURE_COLUMNS
+
+    return model, list(feature_names)
+
+
+def build_features(df: pd.DataFrame, feature_columns: list[str]) -> pd.DataFrame:
+    df = df.copy()
+    if "transaction_amount_category" in df.columns:
+        for column in AMOUNT_CATEGORY_DUMMY_COLUMNS:
+            if column not in df.columns:
+                category = column.removeprefix("dummy_amount_cat_")
+                df[column] = (df["transaction_amount_category"] == category).astype(int)
+
+    missing_columns = [column for column in feature_columns if column not in df.columns]
+    if missing_columns:
+        raise ValueError(f"Missing feature columns in silver data: {missing_columns}")
+
+    return df[feature_columns]
 
 
 def classify_risk(prob: float) -> str:
@@ -74,9 +109,9 @@ def classify_risk(prob: float) -> str:
     return "baixo"
 
 
-def process_file(key: str, model, mean_amount: float) -> None:
+def process_file(key: str, model, feature_columns: list[str]) -> None:
     silver_df = read_parquet(SILVER_BUCKET, key)
-    features = build_features(silver_df, mean_amount)
+    features = build_features(silver_df, feature_columns)
 
     probs = model.predict_proba(features)[:, 1]
     preds = (probs >= 0.5).astype(int)
@@ -104,9 +139,8 @@ def process_file(key: str, model, mean_amount: float) -> None:
 def main() -> None:
     print("Carregando modelo...")
     artifact = joblib.load(MODEL_PATH)
-    model = artifact["model"]
-    mean_amount = artifact["mean_amount"]
-    print(f"Modelo carregado. mean_amount={mean_amount:.4f}")
+    model, feature_columns = get_model_and_features(artifact)
+    print(f"Modelo carregado com {len(feature_columns)} features.")
 
     ensure_bucket(GOLD_BUCKET)
 
@@ -123,7 +157,7 @@ def main() -> None:
             if pending:
                 print(f"[gold] {len(pending)} arquivo(s) novo(s) para processar")
                 for key in pending:
-                    process_file(key, model, mean_amount)
+                    process_file(key, model, feature_columns)
             else:
                 print(f"[gold] Nenhum arquivo novo. Aguardando {POLL_INTERVAL}s...")
 
