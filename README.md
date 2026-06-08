@@ -37,7 +37,7 @@ Outro fator relevante é o desbalanceamento extremo da base, já que apenas uma 
 ## Objetivo do Projeto
 Este projeto tem como objetivo o desenvolvimento de uma prova de conceito para a detecção de transações fraudulentas em tempo real, empregando técnicas de aprendizado de máquina e big data. Para isso, será utilizado o dataset [Credit Card Fraud Detection](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud), disponibilizado pelo grupo MLG da Universidade Livre de Bruxelas (ULB) e embora seja de dimensão reduzida, toda a arquitetura é concebida sob a ótica de Big Data, demonstrando como soluções desse tipo se comportariam em ambientes de produção com volumes massivos de dados.
 
-O dataset é composto por transações anonimizadas de cartões de crédito europeus e é amplamente adotado em estudos sobre o tema. O conjunto de dados reúne transações realizadas por portadores de cartões de crédito europeus em setembro de 2013, ao longo de dois dias. São 284.807 transações no total, das quais apenas 492 correspondem a fraudes — representando aproximadamente 0,172% dos registros, o que caracteriza um dataset altamente desbalanceado.
+O dataset é composto por transações anonimizadas de cartões de crédito europeus e é amplamente adotado em estudos sobre o tema. O conjunto de dados reúne transações realizadas por portadores de cartões de crédito europeus em setembro de 2013, ao longo de dois dias. São 284.807 transações no total, das quais apenas 492 correspondem a fraudes, representando aproximadamente 0,172% dos registros, o que caracteriza um dataset altamente desbalanceado.
 
 O pipeline é estruturado seguindo a arquitetura Medallion, com separação clara de responsabilidades entre camadas, garantindo rastreabilidade, reprodutibilidade e qualidade progressiva dos dados ao longo do fluxo.
 
@@ -47,30 +47,6 @@ A camada Gold representa a entrega de valor do projeto. Nela, cada transação r
 - custo estimado dos falsos positivos. 
 
 As transações são ainda segmentadas por nível de risco — baixo, médio e alto — e o desempenho do modelo é monitorado continuamente por meio de métricas como AUPRC, F1-score, Precision e Recall.
-
-## Arquitetura
-
-A pipeline implementada segue a ideia da arquitetura Medallion, com separação progressiva entre ingestão, transformação e consumo analítico.
-
-![Diagrama da pipeline](documentacao/Diagrama1.png)
-
-Fluxo principal:
-
-1. O producer baixa o dataset, quando necessário, e publica as transações no tópico Kafka `creditcard`.
-2. O broker Kafka recebe os eventos e permite o consumo continuo das mensagens.
-3. O consumer valida, transforma e enriquece os registros.
-4. As transações transformadas são agrupadas em janelas de 24 segundos.
-5. Os dados processados são gravados no MinIO em formato Parquet, no bucket `silver`.
-
-Componentes:
-
-| Camada | Tecnologia | Papel |
-|---|---|---|
-| Ingestão | Kafka, kafka-python | Simular o fluxo continuo de transações |
-| Processamento | Python, Pandas, scikit-learn | Validar, transformar e enriquecer os registros |
-| Armazenamento | MinIO, Parquet | Persistir dados transformados em formato colunar |
-| Orquestração | Docker Compose, Poe the Poet | Subir e controlar os servicos locais |
-| Modelagem | XGBoost, scikit-learn, imbalanced-learn | Treinar e avaliar modelos de classificação |
 
 ## Metodologia
 
@@ -128,13 +104,9 @@ Com isso, a camada Gold passa a armazenar não apenas os dados transformados, ma
 
 ### Visualização e dashboard
 
-Além da geração das predições, o projeto inclui um dashboard para visualização dos dados da camada Gold. Essa interface consome os arquivos armazenados em `predictions/` no bucket `gold` e apresenta métricas agregadas sobre as transações classificadas.
+Além da geração das predições, o projeto inclui um dashboard para visualização dos dados da camada Gold. Essa interface consome os arquivos armazenados em `predictions/` no bucket `gold` e apresenta métricas agregadas sobre as transações classificadas. O dashboard foi estruturado para exibir informações como total de transações processadas, quantidade de fraudes detectadas, taxa de fraude, probabilidade média de fraude, distribuição por nível de risco, distribuição das probabilidades e últimas transações classificadas.
 
-O dashboard foi estruturado para exibir informações como total de transações processadas, quantidade de fraudes detectadas, taxa de fraude, probabilidade média de fraude, distribuição por nível de risco, distribuição das probabilidades e últimas transações classificadas.
-
-Para evitar sobrecarga na leitura dos dados, foi adicionada uma configuração de limite máximo de arquivos carregados pelo dashboard, definida pela variável `DASHBOARD_MAX_FILES`. Essa configuração impede que a aplicação tente carregar indefinidamente todos os arquivos da camada Gold conforme o pipeline cresce. Além disso, o dashboard utiliza cache com tempo de expiração baseado em `REFRESH_INTERVAL`, reduzindo leituras repetidas no MinIO e tornando a interface mais estável.
-
-Essa etapa fecha o ciclo do pipeline, permitindo acompanhar os resultados produzidos pela camada Gold de forma visual e operacional.
+Para evitar sobrecarga na leitura dos dados, foi adicionada uma configuração de limite máximo de arquivos carregados pelo dashboard, definida pela variável `DASHBOARD_MAX_FILES`. Essa configuração impede que a aplicação tente carregar indefinidamente todos os arquivos da camada Gold conforme o pipeline cresce. Além disso, o dashboard utiliza cache com tempo de expiração baseado em `REFRESH_INTERVAL`, reduzindo leituras repetidas no MinIO e tornando a interface mais estável. Essa etapa fecha o ciclo do pipeline, permitindo acompanhar os resultados produzidos pela camada Gold de forma visual e operacional.
 
 ### Modelagem e destino
 
