@@ -152,30 +152,23 @@ A primeira análise dos dados pode ser encontrada no notebook [Data Analysis](sr
 
 ## Resultados
 
-Foram realizados experimentos utilizando o algoritmo XGBoost para a classificação de transações fraudulentas e legítimas. Devido ao elevado desbalanceamento da base de dados, a principal métrica adotada para avaliação foi a Área Sob a Curva ROC (AUC-ROC), complementada pelas métricas Precision, Recall e F1-Score, que permitem uma análise mais adequada do desempenho sobre a classe minoritária.
+Foram realizados experimentos utilizando o algoritmo XGBoost e o Random Forest para a classificação de transações fraudulentas e legítimas onde o XGBoost teve melhor performnance. Devido ao elevado desbalanceamento da base de dados, a principal métrica adotada para avaliação foi a Área Sob a Curva ROC (AUC-ROC), complementada pelas métricas Precision, Recall e F1-Score, que permitem uma análise mais adequada do desempenho sobre a classe minoritária.
 
-Durante a etapa de treinamento, diferentes combinações de hiperparâmetros foram avaliadas com o objetivo de identificar a configuração de melhor desempenho. O modelo selecionado apresentou profundidade máxima igual a 3, taxa de aprendizado de 0,039, subsample de 0,8 e colsample_bytree de 0,9. Essa configuração alcançou AUC-ROC de 0,9836 no conjunto de validação, evidenciando elevada capacidade de distinguir transações fraudulentas de transações legítimas.
-
-Após a seleção do modelo, foi realizada sua avaliação no conjunto de testes. Os resultados obtidos são apresentados na Tabela X, por meio da matriz de confusão, permitindo analisar a distribuição de acertos e erros entre as classes de transações legítimas e fraudulentas.
+Durante a etapa de treinamento, diferentes combinações de hiperparâmetros foram avaliadas com o objetivo de identificar a configuração de melhor desempenho. O modelo selecionado apresentou profundidade máxima igual a 2, taxa de aprendizado de 0,039, subsample de 0,8. Essa configuração alcançou AUC-ROC de 0,9736 no conjunto de validação, evidenciando elevada capacidade de distinguir transações fraudulentas de transações legítimas.
 
 A avaliação no conjunto de testes produziu a matriz de confusão apresentada na Tabela X.
-
-| Classe Real | Predito Normal | Predito Fraude |
-|------------|---------------:|---------------:|
-| Normal     | 56.859         | 3              |
-| Fraude     | 22             | 78             |
 
 Com base nesses resultados, foram obtidas as seguintes métricas:
 
 | Métrica   | Valor   |
 |-----------|---------:|
-| AUC-ROC   | 0,9836   |
-| Precision | 96,30%   |
-| Recall    | 78,00%   |
-| F1-Score  | 86,19%   |
-| Acurácia  | 99,96%   |
+| AUC-ROC   | 0,9821   |
+| Precision | 80,95%   |
+| Recall    | 85,00%   |
+| F1-Score  | 82,93%   |
+| Acurácia  | 99,94%   |
 
-Os resultados demonstram excelente desempenho na identificação de transações fraudulentas. O modelo foi capaz de detectar corretamente 78% das fraudes presentes no conjunto de testes, ao mesmo tempo em que manteve uma taxa extremamente baixa de falsos positivos, classificando incorretamente apenas três transações legítimas como fraudulentas.
+Os resultados demonstram excelente desempenho na identificação de transações fraudulentas. O modelo foi capaz de detectar corretamente 85% das fraudes presentes no conjunto de testes, ao mesmo tempo em que manteve uma taxa extremamente baixa de falsos positivos, classificando incorretamente apenas três transações legítimas como fraudulentas.
 
 Também foi avaliada uma abordagem utilizando a técnica SMOTE para balanceamento das classes. Após otimização dos hiperparâmetros por meio de Randomized Search, o modelo alcançou AUC-ROC de 0,9821 e Recall de 85%. Embora tenha apresentado ganho na capacidade de detectar fraudes, o desempenho geral foi semelhante ao modelo treinado diretamente sobre os dados originais, evidenciando a robustez do algoritmo XGBoost mesmo diante de um conjunto altamente desbalanceado.
 
@@ -187,7 +180,7 @@ Além do desempenho preditivo, o projeto demonstrou a viabilidade da construçã
 
 O projeto demonstrou a viabilidade de uma solução de Big Data para detecção de fraudes em cartão de crédito, integrando Kafka, processamento em Python, armazenamento em Parquet no MinIO, inferência com XGBoost e visualização em dashboard. A organização em camadas no modelo Medallion contribuiu para separar dados brutos, dados transformados e resultados analíticos, tornando o pipeline mais rastreável e estruturado.
 
-Os resultados obtidos indicam bom desempenho do modelo, com AUC-ROC de 0,9836, Precision de 96,30%, Recall de 78,00% e F1-Score de 86,19%. A baixa quantidade de falsos positivos mostra que o modelo evitou classificar muitas transações legítimas como fraude. No entanto, a existência de 22 fraudes não detectadas evidencia que o Recall ainda pode ser aprimorado, especialmente por se tratar de um problema em que falsos negativos representam risco financeiro direto.
+Os resultados obtidos indicam bom desempenho do modelo, com AUC-ROC de 0,9821, Precision de 80,95%, Recall de 85,00% e F1-Score de 82,93%. A baixa quantidade de falsos positivos mostra que o modelo evitou classificar muitas transações legítimas como fraude. No entanto, a existência de 0.15 fraudes não detectadas evidencia que o Recall ainda pode ser aprimorado, especialmente por se tratar de um problema em que falsos negativos representam risco financeiro direto.
 
 A principal dificuldade do projeto foi lidar com o forte desbalanceamento da base, além de adaptar um dataset histórico para uma simulação de fluxo contínuo. Também foram identificados desafios de integração entre os serviços do pipeline e de controle do volume de dados consumido pelo dashboard.
 
