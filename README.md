@@ -72,6 +72,7 @@ Componentes:
 | Orquestração | Docker Compose, Poe the Poet | Subir e controlar os servicos locais |
 | Modelagem | XGBoost, scikit-learn, imbalanced-learn | Treinar e avaliar modelos de classificação |
 
+```md
 ## Metodologia
 
 A metodologia foi organizada como um pipeline de dados inspirado na arquitetura Medallion, separando o fluxo em camadas progressivas de qualidade e utilidade. A solução foi implementada em ambiente local conteinerizado com Docker Compose, permitindo simular componentes de uma arquitetura distribuída sem depender de infraestrutura em nuvem.
@@ -109,13 +110,75 @@ O carregamento é feito no MinIO, que simula um armazenamento de objetos compat�
 
 Na lógica da arquitetura Medallion, a base original representa a camada Bronze, pois preserva os dados brutos do dataset. A camada Silver corresponde aos dados validados, padronizados e enriquecidos gravados no MinIO. A camada Gold representa a etapa analítica do projeto, na qual as transações são usadas para treinamento, avaliação e aplicação do modelo de detecção de fraude.
 
+### Camada Gold e inferência do modelo
+
+A camada Gold é responsável por transformar os dados processados da camada Silver em informação analítica e acionável. Para isso, foi implementado um serviço específico, executado via Docker Compose, que lê os arquivos Parquet armazenados no bucket `silver`, monta as variáveis esperadas pelo modelo e aplica o classificador treinado.
+
+O modelo utilizado nessa etapa é o XGBoost salvo em `models/xgb_model.pkl`. A configuração do serviço Gold aponta para esse artefato por meio da variável `MODEL_PATH=/app/models/xgb_model.pkl`, separando corretamente os arquivos de dados, localizados em `dados`, dos artefatos de machine learning, armazenados em `models`.
+
+Durante o processamento, o serviço Gold realiza as seguintes etapas:
+
+- leitura dos arquivos Parquet da camada Silver;
+- construção das features utilizadas pelo modelo, incluindo variáveis originais e derivadas;
+- cálculo da probabilidade de fraude por meio de `predict_proba`;
+- geração da classificação binária da transação com base em um limiar de decisão;
+- atribuição do nível de risco da transação, como `baixo`, `medio` ou `alto`;
+- gravação dos resultados no bucket `gold`, no caminho `predictions/`.
+
+Com isso, a camada Gold passa a armazenar não apenas os dados transformados, mas também os resultados da predição, como `fraud_probability`, `is_fraud_pred` e `risk_level`. Essa estrutura permite que os dados sejam consumidos posteriormente por dashboards, relatórios ou sistemas de alerta.
+
+### Visualização e dashboard
+
+Além da geração das predições, o projeto inclui um dashboard para visualização dos dados da camada Gold. Essa interface consome os arquivos armazenados em `predictions/` no bucket `gold` e apresenta métricas agregadas sobre as transações classificadas.
+
+O dashboard foi estruturado para exibir informações como total de transações processadas, quantidade de fraudes detectadas, taxa de fraude, probabilidade média de fraude, distribuição por nível de risco, distribuição das probabilidades e últimas transações classificadas.
+
+Para evitar sobrecarga na leitura dos dados, foi adicionada uma configuração de limite máximo de arquivos carregados pelo dashboard, definida pela variável `DASHBOARD_MAX_FILES`. Essa configuração impede que a aplicação tente carregar indefinidamente todos os arquivos da camada Gold conforme o pipeline cresce. Além disso, o dashboard utiliza cache com tempo de expiração baseado em `REFRESH_INTERVAL`, reduzindo leituras repetidas no MinIO e tornando a interface mais estável.
+
+Essa etapa fecha o ciclo do pipeline, permitindo acompanhar os resultados produzidos pela camada Gold de forma visual e operacional.
+
 ### Modelagem e destino
 
 A etapa analítica foi conduzida nos notebooks em `src/notebooks`, com análise exploratória e experimentos de classificação. O modelo principal utiliza XGBoost para distinguir transações legítimas e fraudulentas. Também foi avaliada uma abordagem com SMOTE para lidar com o desbalanceamento da classe fraudulenta.
 
-O destino final da solução é a geração de predições e indicadores de negócio. Em um cenário produtivo, a camada Gold poderia alimentar dashboards, sistemas antifraude, alertas operacionais e APIs de decisão em tempo real. Neste projeto, o valor entregue está na demonstração integrada do fluxo: ingestão em Kafka, transformação em stream, armazenamento em Parquet no MinIO e avaliação de modelos de machine learning.
+O destino final da solução é a geração de predições e indicadores de negócio. Em um cenário produtivo, a camada Gold poderia alimentar dashboards, sistemas antifraude, alertas operacionais e APIs de decisão em tempo real. Neste projeto, o valor entregue está na demonstração integrada do fluxo: ingestão em Kafka, transformação em stream, armazenamento em Parquet no MinIO, aplicação do modelo na camada Gold e visualização dos resultados em dashboard.
 
 A primeira análise dos dados pode ser encontrada no notebook [Data Analysis](src/notebooks/aed.ipynb), onde exploramos as características das transações, a distribuição dos dados e identificamos padrões relevantes para a detecção de fraudes.
+
+### Ferramentas utilizadas
+
+#### Ingestão de dados
+
+- Apache Kafka
+- kafka-python
+- Kaggle
+- Kaggle CLI
+
+#### Processamento, transformação e inferência
+
+- Python
+- Pandas
+- NumPy
+- scikit-learn
+- XGBoost
+- Joblib
+
+#### Armazenamento
+
+- MinIO
+- Parquet
+- PyArrow
+
+#### Visualização
+
+- Streamlit
+- Plotly
+
+#### Orquestração e ambiente
+
+- Docker
+- Docker Compose
+```
 
 ## Resultados
 
@@ -150,38 +213,45 @@ Sob a perspectiva de negócio, os resultados indicam que a solução possui pote
 
 Além do desempenho preditivo, o projeto demonstrou a viabilidade da construção de um pipeline de detecção de fraudes em tempo real utilizando uma arquitetura baseada em Big Data. A utilização do padrão Medallion permitiu organizar o fluxo de dados em diferentes níveis de refinamento, garantindo rastreabilidade, qualidade dos dados e facilidade de monitoramento das predições geradas pelo modelo.
 
-## Conclusão (A FAZER)
+## Conclusão
 
+O projeto demonstrou a viabilidade de uma solução de Big Data para detecção de fraudes em cartão de crédito, integrando Kafka, processamento em Python, armazenamento em Parquet no MinIO, inferência com XGBoost e visualização em dashboard. A organização em camadas no modelo Medallion contribuiu para separar dados brutos, dados transformados e resultados analíticos, tornando o pipeline mais rastreável e estruturado.
+
+Os resultados obtidos indicam bom desempenho do modelo, com AUC-ROC de 0,9836, Precision de 96,30%, Recall de 78,00% e F1-Score de 86,19%. A baixa quantidade de falsos positivos mostra que o modelo evitou classificar muitas transações legítimas como fraude. No entanto, a existência de 22 fraudes não detectadas evidencia que o Recall ainda pode ser aprimorado, especialmente por se tratar de um problema em que falsos negativos representam risco financeiro direto.
+
+A principal dificuldade do projeto foi lidar com o forte desbalanceamento da base, além de adaptar um dataset histórico para uma simulação de fluxo contínuo. Também foram identificados desafios de integração entre os serviços do pipeline e de controle do volume de dados consumido pelo dashboard.
+
+Como trabalhos futuros, recomenda-se integrar alertas em tempo real, ajustar o limiar de classificação conforme o custo de negócio, monitorar drift dos dados, versionar modelos e expandir a solução para uma infraestrutura mais escalável.
 
 ## Setup
 
-Este projeto usa [uv](https://docs.astral.sh/uv/) para gerenciar dependencias.
+Este projeto usa [uv](https://docs.astral.sh/uv/) para gerenciar dependências.
 
-1. Clone o repositorio:
+1. Clone o repositório:
 
     ```bash
     git clone https://github.com/Carlos3du/fraud-detection-bigdata
     ```
 
-2. Acesse o diretorio do projeto:
+2. Acesse o diretório do projeto:
 
     ```bash
     cd fraud-detection-bigdata
     ```
 
-3. Instale o `uv`, caso ainda nao tenha:
+3. Instale o `uv`, caso ainda não tenha:
 
     ```bash
     pip install uv
     ```
 
-4. Instale as dependencias:
+4. Instale as dependências:
 
     ```bash
     uv sync
     ```
 
-5. Configure as variaveis de ambiente:
+5. Configure as variáveis de ambiente:
 
     ```bash
     cp .env.example .env
@@ -194,7 +264,7 @@ Este projeto usa [uv](https://docs.astral.sh/uv/) para gerenciar dependencias.
     MINIO_ROOT_PASSWORD=sua_senha
     ```
 
-6. Suba os servicos:
+6. Suba os serviços:
 
     ```bash
     uv run poe up
@@ -206,7 +276,7 @@ Este projeto usa [uv](https://docs.astral.sh/uv/) para gerenciar dependencias.
     uv run poe logs
     ```
 
-8. Para parar os servicos:
+8. Para parar os serviços:
 
     ```bash
     uv run poe down
@@ -214,7 +284,7 @@ Este projeto usa [uv](https://docs.astral.sh/uv/) para gerenciar dependencias.
 
 ## Acessos locais
 
-| Servico | URL |
+| Serviço | URL |
 |---|---|
 | Kafdrop | <http://localhost:9000> |
 | MinIO API | <http://localhost:9001> |
@@ -232,6 +302,4 @@ Este projeto usa [uv](https://docs.astral.sh/uv/) para gerenciar dependencias.
 │   │   └── producer
 │   ├── notebooks
 │   └── scripts
-├── documentacao
-└── README.md
-```
+├── documentação
