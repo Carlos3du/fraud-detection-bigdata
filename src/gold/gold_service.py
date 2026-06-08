@@ -142,6 +142,7 @@ def main() -> None:
     model, feature_columns = get_model_and_features(artifact)
     print(f"Modelo carregado com {len(feature_columns)} features.")
 
+    ensure_bucket(SILVER_BUCKET)
     ensure_bucket(GOLD_BUCKET)
 
     while True:
