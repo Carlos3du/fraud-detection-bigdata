@@ -259,6 +259,7 @@ Este projeto usa [uv](https://docs.astral.sh/uv/) para gerenciar dependências.
 | Kafdrop | <http://localhost:9000> |
 | MinIO API | <http://localhost:9001> |
 | MinIO Console | <http://localhost:9090> |
+| Dashboard | <http://localhost:8501> |
 
 ## Estrutura do projeto
 
