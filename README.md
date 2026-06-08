@@ -72,7 +72,6 @@ Componentes:
 | Orquestração | Docker Compose, Poe the Poet | Subir e controlar os servicos locais |
 | Modelagem | XGBoost, scikit-learn, imbalanced-learn | Treinar e avaliar modelos de classificação |
 
-```md
 ## Metodologia
 
 A metodologia foi organizada como um pipeline de dados inspirado na arquitetura Medallion, separando o fluxo em camadas progressivas de qualidade e utilidade. A solução foi implementada em ambiente local conteinerizado com Docker Compose, permitindo simular componentes de uma arquitetura distribuída sem depender de infraestrutura em nuvem.
@@ -178,7 +177,6 @@ A primeira análise dos dados pode ser encontrada no notebook [Data Analysis](sr
 
 - Docker
 - Docker Compose
-```
 
 ## Resultados
 
