@@ -50,6 +50,7 @@ services:
       KAFKA_TOPIC: creditcard
     volumes:
       - ./src/scripts:/app/src/scripts:ro
+      - ./dados:/app/dados:ro
   
   consumer:
     build: ./src/ingestion/consumer
@@ -75,6 +76,46 @@ services:
     command: server /data --console-address ":9090"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  gold:
+    build: ./src/gold
+    restart: on-failure
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      SILVER_BUCKET: silver
+      GOLD_BUCKET: gold
+      MODEL_PATH: /app/models/xgb_model.pkl
+      POLL_INTERVAL: "10"
+    volumes:
+      - ./dados:/app/dados:ro
+      - ./models:/app/models:ro
+
+  dashboard:
+    build: ./src/dashboard
+    restart: on-failure
+    depends_on:
+      minio:
+        condition: service_healthy
+    ports:
+      - "8501:8501"
+    environment:
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      GOLD_BUCKET: gold
+      REFRESH_INTERVAL: "10"
+      DASHBOARD_MAX_FILES: "5000"
 
 volumes:
   minio_data:
