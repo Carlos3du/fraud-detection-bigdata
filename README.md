@@ -172,7 +172,7 @@ Os resultados demonstram excelente desempenho na identificação de transações
 
 Também foi avaliada uma abordagem utilizando a técnica SMOTE para balanceamento das classes. Após otimização dos hiperparâmetros por meio de Randomized Search, o modelo alcançou AUC-ROC de 0,9821 e Recall de 85%. Embora tenha apresentado ganho na capacidade de detectar fraudes, o desempenho geral foi semelhante ao modelo treinado diretamente sobre os dados originais, evidenciando a robustez do algoritmo XGBoost mesmo diante de um conjunto altamente desbalanceado.
 
-Como resultado da pipeline de big data, os arquivos Parquet são carregados de forma incremental a cada 20 segundos, com limite de 5.000 arquivos por ciclo — restrição implementada para evitar instabilidade no dashboard. Por esse motivo, a visualização completa dos dados requer um tempo de espera até que todos os arquivos sejam processados e exibidos.
+Como resultado da pipeline de big data, os arquivos Parquet são carregados de forma incremental a cada 24 segundos, com limite de 5.000 arquivos por ciclo — restrição implementada para evitar instabilidade no dashboard. Por esse motivo, a visualização completa dos dados requer um tempo de espera até que todos os arquivos sejam processados e exibidos.
 
 Sob a perspectiva de negócio, os resultados indicam que a solução possui potencial para reduzir significativamente perdas financeiras associadas a fraudes em cartões de crédito, mantendo baixo impacto sobre transações legítimas. Além disso, a arquitetura proposta demonstrou a viabilidade de utilização de tecnologias de Big Data para processamento e classificação de eventos em tempo real, permitindo escalabilidade e monitoramento contínuo das predições geradas pelo modelo.
 
@@ -182,7 +182,9 @@ Além do desempenho preditivo, o projeto demonstrou a viabilidade da construçã
 
 O projeto demonstrou a viabilidade de uma solução de Big Data para detecção de fraudes em cartão de crédito, integrando Kafka, processamento em Python, armazenamento em Parquet no MinIO, inferência com XGBoost e visualização em dashboard. A organização em camadas no modelo Medallion contribuiu para separar dados brutos, dados transformados e resultados analíticos, tornando o pipeline mais rastreável e estruturado.
 
-Os resultados obtidos indicam bom desempenho do modelo, com AUC-ROC de 0,9821, Precision de 80,95%, Recall de 85,00% e F1-Score de 82,93%. A baixa quantidade de falsos positivos mostra que o modelo evitou classificar muitas transações legítimas como fraude. No entanto, a existência de 0.15 fraudes não detectadas evidencia que o Recall ainda pode ser aprimorado, especialmente por se tratar de um problema em que falsos negativos representam risco financeiro direto.
+Os resultados obtidos demonstram bom desempenho do modelo, com AUC-ROC de 0,9821, Precision de 80,95%, Recall de 85,00%, F1-Score de 82,93% e Acurácia de 99,94%. O modelo identificou corretamente 85% das fraudes do conjunto de testes e classificou incorretamente apenas três transações legítimas como fraudulentas. 
+
+A baixa quantidade de falsos positivos reduz impactos sobre clientes legítimos. No entanto, 15% das fraudes não foram detectadas, indicando que ainda há espaço para melhoria no Recall, principalmente porque falsos negativos podem gerar perdas financeiras. Mesmo assim, os resultados mostram que o XGBoost foi eficaz para o problema, mantendo bom equilíbrio entre detecção de fraudes e baixo número de classificações incorretas.
 
 A principal dificuldade do projeto foi lidar com o forte desbalanceamento da base, além de adaptar um dataset histórico para uma simulação de fluxo contínuo. Também foram identificados desafios de integração entre os serviços do pipeline e de controle do volume de dados consumido pelo dashboard.
 
